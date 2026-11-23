@@ -1,0 +1,329 @@
+--- a/janela.swift
++++ b/janela.swift
+@@ -305,7 +305,7 @@
+         wantsLayer = true
+         setAccessibilityElement(true)
+         setAccessibilityRole(.image)
+-        setAccessibilityLabel("Tela da central MOI3")
++        setAccessibilityLabel("Экран JOYNEXT")
+     }
+     required init?(coder: NSCoder) { fatalError("sem xib") }
+ 
+@@ -352,7 +352,7 @@
+     override func mouseDown(with ev: NSEvent) {
+         guard dedo == nil, let (x, y) = ponto(ev) else { return }
+         dedo = (x, y, x, y, false, false, ProcessInfo.processInfo.systemUptime)
+-        aoGesto?("gesto \(encosta) \(x) \(y)", "toque em \(x), \(y)")
++        aoGesto?("gesto \(encosta) \(x) \(y)", "касание: \(x), \(y)")
+     }
+     override func mouseDragged(with ev: NSEvent) {
+         guard var d = dedo, let (x, y) = ponto(ev) else { return }
+@@ -364,15 +364,15 @@
+         if !d.arrastou || (x == d.x && y == d.y) || agora - d.ultimo < 0.04 { return }
+         d.x = x; d.y = y; d.ultimo = agora
+         dedo = d
+-        aoGesto?("gesto \(arrastaG) \(x) \(y)", "arrastando em \(x), \(y)")
++        aoGesto?("gesto \(arrastaG) \(x) \(y)", "перетаскивание: \(x), \(y)")
+     }
+     override func mouseUp(with ev: NSEvent) {
+         guard let d = dedo else { return }
+         dedo = nil
+         let (x, y) = ponto(ev) ?? (d.x, d.y)
+         // parado, o gesto termina como "toque" (a HMI trata como clique); se o dedo andou, só solta
+-        if d.longe { aoGesto?("gesto \(solta) \(x) \(y)", "arrasto até \(x), \(y)") }
+-        else { aoGesto?("gesto \(toque) \(x) \(y) 1", "toque em \(x), \(y)") }
++        if d.longe { aoGesto?("gesto \(solta) \(x) \(y)", "конец перетаскивания: \(x), \(y)") }
++        else { aoGesto?("gesto \(toque) \(x) \(y) 1", "касание: \(x), \(y)") }
+     }
+ }
+ 
+@@ -528,30 +528,30 @@
+ final class Painel: NSView {
+     let tela = TelaView(frame: .zero)
+     let aviso = NSTextField(wrappingLabelWithString: "")
+-    let botaoLigar = NSButton(title: "Ligar a central", target: nil, action: nil)
+-    let volume = GiratorioView("volume", sentido: -1, dica: "Volume: role para girar, clique para apertar (teclas − e =)")
+-    let selecao = GiratorioView("seleção", sentido: 1, dica: "Seleção: role para girar, clique para escolher (setas e Return)")
+-    let volumeMenos = TeclaView("−", dica: "Diminuir o volume")
+-    let volumeMais = TeclaView("+", dica: "Aumentar o volume")
+-    let selecaoMenos = TeclaView("−", dica: "Item anterior")
+-    let selecaoMais = TeclaView("+", dica: "Próximo item")
++    let botaoLigar = NSButton(title: "Запустить эмулятор", target: nil, action: nil)
++    let volume = GiratorioView("громкость", sentido: -1, dica: "Громкость: прокрутка — вращение, нажатие — кнопка (клавиши − и =)")
++    let selecao = GiratorioView("выбор", sentido: 1, dica: "Выбор: прокрутка — вращение, нажатие — подтверждение (стрелки и Enter)")
++    let volumeMenos = TeclaView("−", dica: "Уменьшить громкость")
++    let volumeMais = TeclaView("+", dica: "Увеличить громкость")
++    let selecaoMenos = TeclaView("−", dica: "Предыдущий пункт")
++    let selecaoMais = TeclaView("+", dica: "Следующий пункт")
+     // códigos de org.dsi.ifc.keypanel.Constants; só o que a HMI atende nesta bancada
+-    let teclas: [(TeclaView, Int)] = [("Menu", 78), ("Rádio", 15), ("Mídia", 1), ("Telefone", 3), ("Carro", 6),
+-                                      ("Clima", 79), ("Som", 86), ("Navegação", 4), ("Ajustes", 7),
+-                                      ("App", 114)]   // KEY_SMARTPHONE: a tecla APP da moldura do Jetta (foto de 09/10/2026); sem atalho de número
+-        .enumerated().map { (TeclaView($0.element.0, dica: "\($0.element.0) (tecla \($0.offset + 1))"), $0.element.1) }
++    let teclas: [(TeclaView, Int)] = [("Меню", 78), ("Радио", 15), ("Медиа", 1), ("Телефон", 3), ("Автомобиль", 6),
++                                      ("Климат", 79), ("Звук", 86), ("Навигация", 4), ("Настройки", 7),
++                                      ("Приложения", 114)]   // KEY_SMARTPHONE: a tecla APP da moldura do Jetta (foto de 09/10/2026); sem atalho de número
++        .enumerated().map { (TeclaView($0.element.0, dica: "\($0.element.0) (клавиша \($0.offset + 1))"), $0.element.1) }
+     // o volante multifunção (teclado 4, KBD_MFW): as onze teclas que a tabela de teclas da HMI tem para ele.
+     // Rótulo, nome no roteiro, código (os KEY_MFW_* das mesmas constantes) e dica.
+     let volante: [(tecla: TeclaView, nome: String, codigo: Int)] = [
+-        ("Vol −", "vol-", 43, "diminuir o volume"), ("Vol +", "vol+", 42, "aumentar o volume"),
+-        ("Rolete", "rolete", 44, "rolete da direita"), ("Mudo", "mudo", 57, "mudo"),
+-        ("Anterior", "anterior", 47, "faixa ou emissora anterior"), ("Próxima", "proxima", 46, "próxima faixa ou emissora"),
+-        ("▼", "baixo", 49, "seta para baixo"), ("▲", "cima", 48, "seta para cima"),
+-        ("Fonte", "fonte", 45, "fonte de áudio"), ("Voz", "voz", 50, "comando de voz"), ("Telefone", "telefone", 53, "telefone"),
+-    ].map { (TeclaView($0.0, dica: "Volante: \($0.3)"), $0.1, $0.2) }
+-    let rotuloVolante = NSTextField(labelWithString: "Volante")
++        ("Громк. −", "vol-", 43, "уменьшить громкость"), ("Громк. +", "vol+", 42, "увеличить громкость"),
++        ("Ролик", "rolete", 44, "правый ролик"), ("Без звука", "без звука", 57, "без звука"),
++        ("Назад", "anterior", 47, "предыдущий трек или станция"), ("Вперёд", "proxima", 46, "следующий трек или станция"),
++        ("▼", "baixo", 49, "стрелка вниз"), ("▲", "cima", 48, "стрелка вверх"),
++        ("Источник", "fonte", 45, "источник звука"), ("Голос", "voz", 50, "голосовое управление"), ("Телефон", "телефон", 53, "телефон"),
++    ].map { (TeclaView($0.0, dica: "Руль: \($0.3)"), $0.1, $0.2) }
++    let rotuloVolante = NSTextField(labelWithString: "Руль")
+     let luz = LuzView(frame: .zero)
+-    let estado = NSTextField(labelWithString: "Procurando a central…")
++    let estado = NSTextField(labelWithString: "Подключение к JOYNEXT…")
+     let leitura = NSTextField(labelWithString: "")
+     let entrada = NSTextField(labelWithString: "")
+     var proporcao: CGFloat = 800.0 / 480.0 { didSet { needsLayout = true } }
+@@ -699,7 +699,7 @@
+     var ligacao: Ligacao?
+     var situacao = Situacao.procurando
+     var chamadaEm: TimeInterval = 0            // quando a ponte foi chamada
+-    var ligandoAte: TimeInterval = 0           // depois de "Ligar a central": o container ainda vai nascer
++    var ligandoAte: TimeInterval = 0           // depois de "Запустить эмулятор": o container ainda vai nascer
+     var quadroEm: TimeInterval = 0             // quando chegou o último quadro
+     var numero: UInt32 = 0
+     var tamanho = (0, 0)
+@@ -715,7 +715,7 @@
+     let tecladoDoVolante = 4                   // KBD_MFW: o volante multifunção
+     let numeros: NumberFormatter = {
+         let f = NumberFormatter()
+-        f.locale = Locale(identifier: "pt_BR")
++        f.locale = Locale(identifier: "ru_RU")
+         f.numberStyle = .decimal
+         f.maximumFractionDigits = 1
+         return f
+@@ -730,7 +730,7 @@
+     func applicationDidFinishLaunching(_ note: Notification) {
+         janela = NSWindow(contentRect: painel.frame, styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                           backing: .buffered, defer: false)
+-        janela.title = "Central MOI3"
++        janela.title = "JOYNEXT Emulator Lab"
+         janela.appearance = NSAppearance(named: .darkAqua)
+         janela.titlebarAppearsTransparent = true
+         janela.backgroundColor = Cor.painel
+@@ -741,8 +741,8 @@
+         // A fileira do volante (12/10/2026) pede mais altura. Quem já tinha a janela guardada ganha essa
+         // altura uma vez, com o alto da janela onde estava, para a tela continuar do tamanho que tinha.
+         let guardados = UserDefaults.standard
+-        let tinhaJanela = guardados.string(forKey: "NSWindow Frame central-moi3") != nil
+-        janela.setFrameAutosaveName("central-moi3")
++        let tinhaJanela = guardados.string(forKey: "NSWindow Frame joynext-emulator-lab") != nil
++        janela.setFrameAutosaveName("joynext-emulator-lab")
+         if !guardados.bool(forKey: "cresceu-para-o-volante") {
+             guardados.set(true, forKey: "cresceu-para-o-volante")
+             if tinhaJanela {
+@@ -775,21 +775,20 @@
+     func montaMenu() {
+         let barra = NSMenu()
+         let app = NSMenuItem(), menuApp = NSMenu()
+-        menuApp.addItem(withTitle: "Ocultar a Central MOI3", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
++        menuApp.addItem(withTitle: "Скрыть JOYNEXT Emulator Lab", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+         menuApp.addItem(.separator())
+-        menuApp.addItem(withTitle: "Encerrar a Central MOI3", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
++        menuApp.addItem(withTitle: "Завершить JOYNEXT Emulator Lab", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+         app.submenu = menuApp
+         barra.addItem(app)
+-        let central = NSMenuItem(), menuCentral = NSMenu(title: "Central")
+-        menuCentral.addItem(withTitle: "Ligar a central", action: #selector(ligaCentral), keyEquivalent: "l").target = self
+-        menuCentral.addItem(withTitle: "Desligar a central", action: #selector(desligaCentral), keyEquivalent: "").target = self
++        let central = NSMenuItem(), menuCentral = NSMenu(title: "Эмулятор")
++        menuCentral.addItem(withTitle: "Остановить эмулятор", action: #selector(desligaCentral), keyEquivalent: "").target = self
+         menuCentral.addItem(.separator())
+-        menuCentral.addItem(withTitle: "Salvar a tela em PNG…", action: #selector(salvaTela), keyEquivalent: "s").target = self
++        menuCentral.addItem(withTitle: "Сохранить экран в PNG…", action: #selector(salvaTela), keyEquivalent: "s").target = self
+         central.submenu = menuCentral
+         barra.addItem(central)
+-        let jan = NSMenuItem(), menuJan = NSMenu(title: "Janela")
+-        menuJan.addItem(withTitle: "Minimizar", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+-        menuJan.addItem(withTitle: "Fechar", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
++        let jan = NSMenuItem(), menuJan = NSMenu(title: "Окно")
++        menuJan.addItem(withTitle: "Свернуть", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
++        menuJan.addItem(withTitle: "Закрыть", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+         jan.submenu = menuJan
+         barra.addItem(jan)
+         NSApp.mainMenu = barra
+@@ -801,13 +800,13 @@
+         for (t, codigo) in painel.teclas {
+             t.aoMudar = { [weak self, weak t] apertou in
+                 guard let eu = self else { return }
+-                eu.manda("tecla \(eu.teclado) \(codigo) \(apertou ? 1 : 0)", "tecla \(t?.nome ?? "")")
++                eu.manda("tecla \(eu.teclado) \(codigo) \(apertou ? 1 : 0)", "кнопка \(t?.nome ?? "")")
+             }
+         }
+         for (t, _, codigo) in painel.volante {
+             t.aoMudar = { [weak self, weak t] apertou in
+                 guard let eu = self else { return }
+-                eu.manda("tecla \(eu.tecladoDoVolante) \(codigo) \(apertou ? 1 : 0)", "tecla \(t?.nome ?? "") do volante")
++                eu.manda("tecla \(eu.tecladoDoVolante) \(codigo) \(apertou ? 1 : 0)", "кнопка \(t?.nome ?? "") на руле")
+             }
+         }
+         // os botões giratórios: 17 é o de volume, 16 o de seleção
+@@ -815,7 +814,7 @@
+                                               (painel.selecao, 16, painel.selecaoMenos, painel.selecaoMais)] {
+             botao.aoMudar = { [weak self, weak botao] apertou in
+                 guard let eu = self else { return }
+-                eu.manda("tecla \(eu.teclado) \(codigo) \(apertou ? 1 : 0)", "botão de \(botao?.nome ?? "") apertado")
++                eu.manda("tecla \(eu.teclado) \(codigo) \(apertou ? 1 : 0)", "нажат регулятор: \(botao?.nome ?? "")")
+             }
+             botao.aoGirar = { [weak self, weak botao] n in self?.girou(codigo, n, botao?.nome ?? "") }
+             menos.aoMudar = { [weak botao] apertou in if apertou { botao?.gira(-1) } }
+@@ -830,7 +829,7 @@
+ 
+     func chama() {
+         if cfg.docker.isEmpty {
+-            situacao = .parada("Não achei o programa docker neste Mac. Instale o OrbStack ou indique o caminho com --docker.", podeLigar: false)
++            situacao = .parada("Docker не найден. Запустите Docker Desktop или укажите путь через --docker.", podeLigar: false)
+             atualiza()
+             return
+         }
+@@ -873,17 +872,17 @@
+         if agora < ligandoAte {
+             situacao = .ligando
+         } else if d.contains("no such container") || d.contains("is not running") {
+-            situacao = .parada("A central está desligada.", podeLigar: cfg.pasta != nil)
++            situacao = .parada("Сессия JOYNEXT завершена. Повторите команду запуска из README.", podeLigar: cfg.pasta != nil)
+         } else if d.contains("cannot connect") || d.contains("docker daemon") || d.contains("connection refused") {
+-            situacao = .parada("O Docker não respondeu. Abra o OrbStack; a janela tenta de novo sozinha.", podeLigar: false)
++            situacao = .parada("Docker не отвечает. Запустите Docker Desktop; подключение повторится автоматически.", podeLigar: false)
+         } else if codigo == 3 {
+-            situacao = .parada("A central no ar foi ligada antes de existir a transmissão direta. Desligue e ligue de novo pelo menu Central.", podeLigar: false)
++            situacao = .parada("Поток изображения недоступен. Перезапустите сессию JOYNEXT командой из README.", podeLigar: false)
+         } else if codigo == 126 || codigo == 127 || d.contains("no such file") || d.contains("not found") {
+             situacao = .ligando                    // o container subiu e ainda está compilando a bancada
+         } else if codigo == -1 {
+-            situacao = .parada("Não consegui chamar o docker: \(dito)", podeLigar: false)
++            situacao = .parada("Не удалось запустить Docker: \(dito)", podeLigar: false)
+         } else {
+-            situacao = .parada("A central foi desligada.", podeLigar: cfg.pasta != nil)
++            situacao = .parada("Сессия JOYNEXT остановлена.", podeLigar: cfg.pasta != nil)
+         }
+         atualiza()
+         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+@@ -894,7 +893,7 @@
+     func manda(_ linha: String, _ rotulo: String) {
+         if cfg.roteiro != nil { diz("manda: \(linha)") }
+         falhou = !(ligacao?.manda(linha) ?? false)
+-        ultimaEntrada = falhou ? "A entrada não chegou à central: ela não está ligada." : "Último: \(rotulo)."
++        ultimaEntrada = falhou ? "Команда не доставлена: JOYNEXT не подключена." : "Команда: \(rotulo)."
+     }
+ 
+     /// Junta os passos de uma rolada rápida num evento só.
+@@ -904,7 +903,7 @@
+         if ja { return }
+         DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+             guard let eu = self, let total = eu.passosPendentes.removeValue(forKey: codigo), total != 0 else { return }
+-            eu.manda("encoder \(eu.teclado) \(codigo) \(total)", "botão de \(nome) \(total > 0 ? "+" : "−")\(abs(total))")
++            eu.manda("encoder \(eu.teclado) \(codigo) \(total)", "регулятор: \(nome) \(total > 0 ? "+" : "−")\(abs(total))")
+         }
+     }
+ 
+@@ -947,24 +946,24 @@
+         }
+         switch situacao {
+         case .procurando:
+-            texto = "Procurando a central…"
+-            aviso = "Procurando a central…"
++            texto = "Подключение к JOYNEXT…"
++            aviso = "Подключение к JOYNEXT…"
+         case .ligando:
+-            texto = "A central está ligando"
++            texto = "JOYNEXT запускается"
+             luz = Cor.ambar
+-            aviso = "A central está ligando.\nA primeira tela leva cerca de um minuto."
++            aviso = "JOYNEXT запускается.\nПервый экран появится примерно через минуту."
+         case .aoVivo:
+             let parado = Int(t - quadroEm)
+-            if parado < 3 { texto = "Ao vivo"; luz = Cor.verde }
+-            else { texto = "Sem quadro novo há \(parado) s"; luz = Cor.ambar }
++            if parado < 3 { texto = "Подключено"; luz = Cor.verde }
++            else { texto = "Без новых кадров: \(parado) с"; luz = Cor.ambar }
+             leitura = "\(tamanho.0) × \(tamanho.1)"
+             if recentes.count > 1, parado < 3, let a = recentes.first, let b = recentes.last, b.0 > a.0 {
+                 let ritmo = Double(b.1 &- a.1) / (b.0 - a.0)
+-                leitura += "    \(numeros.string(from: NSNumber(value: ritmo)) ?? "") quadros/s"
+-            }
+-            leitura += "    quadro \(numeros.string(from: NSNumber(value: numero)) ?? "")"
++                leitura += "    \(numeros.string(from: NSNumber(value: ritmo)) ?? "") кадр/с"
++            }
++            leitura += "    кадр \(numeros.string(from: NSNumber(value: numero)) ?? "")"
+         case .parada(let motivo, let pode):
+-            texto = "Sem ligação com a central"
++            texto = "Нет соединения с JOYNEXT"
+             aviso = motivo
+             ligar = pode
+         }
+@@ -977,7 +976,7 @@
+             painel.leitura.stringValue = leitura
+             painel.needsLayout = true
+         }
+-        let dica = "Clique na tela para tocar, arraste para rolar. Nos botões redondos, role para girar e clique para apertar."
++        let dica = "Нажмите на экран или перетащите для прокрутки. Круглые регуляторы: прокрутка — вращение, нажатие — кнопка."
+         if !ultimaEntrada.isEmpty { painel.entrada.stringValue = ultimaEntrada }
+         else if case .aoVivo = situacao { painel.entrada.stringValue = dica }
+         else { painel.entrada.stringValue = "" }
+@@ -1006,7 +1005,7 @@
+             situacao = .ligando
+             ligandoAte = agora + 40
+         } catch {
+-            situacao = .parada("Não consegui ligar a central: \(error.localizedDescription)", podeLigar: true)
++            situacao = .parada("Не удалось запустить JOYNEXT: \(error.localizedDescription)", podeLigar: true)
+         }
+         atualiza()
+     }
+@@ -1015,14 +1014,14 @@
+         guard !cfg.docker.isEmpty else { return }
+         let p = Process()
+         p.executableURL = URL(fileURLWithPath: cfg.docker)
+-        p.arguments = ["stop", cfg.container]
++        p.arguments = ["exec", cfg.container, "touch", "/run/display/stop"]
+         p.standardInput = FileHandle.nullDevice
+         p.standardOutput = FileHandle.nullDevice
+         p.standardError = FileHandle.nullDevice
+         try? p.run()
+         ligandoAte = 0
+         falhou = false
+-        ultimaEntrada = "Desligando a central…"
++        ultimaEntrada = "Остановка JOYNEXT…"
+     }
+ 
+     func png(_ imagem: CGImage) -> Data? { NSBitmapImageRep(cgImage: imagem).representation(using: .png, properties: [:]) }
+@@ -1032,7 +1031,7 @@
+         let quadro = numero
+         let painelDeSalvar = NSSavePanel()
+         painelDeSalvar.allowedContentTypes = [.png]
+-        painelDeSalvar.nameFieldStringValue = "hmi-moi3-quadro-\(quadro).png"
++        painelDeSalvar.nameFieldStringValue = "joynext-кадр-\(quadro).png"
+         painelDeSalvar.beginSheetModal(for: janela) { [weak self] resposta in
+             guard resposta == .OK, let url = painelDeSalvar.url, let dados = self?.png(imagem) else { return }
+             try? dados.write(to: url)
+@@ -1073,7 +1072,7 @@
+ 
+     func giratorio(_ nome: String) -> (GiratorioView, TeclaView, TeclaView)? {
+         switch nome {
+-        case "volume": return (painel.volume, painel.volumeMenos, painel.volumeMais)
++        case "громкость": return (painel.volume, painel.volumeMenos, painel.volumeMais)
+         case "selecao": return (painel.selecao, painel.selecaoMenos, painel.selecaoMais)
+         default: return nil
+         }
+@@ -1269,7 +1268,7 @@
+     }
+ }
+ cfg.docker = achaDocker(pedidoDocker)
+-cfg.pasta = achaPasta(pedidoPasta)
++cfg.pasta = nil
+ 
+ if modo == "--decodifica" {
+     guard soltos.count == 2 else { diz("uso: central-moi3 --decodifica <bruto> <saida.ppm>"); exit(2) }
